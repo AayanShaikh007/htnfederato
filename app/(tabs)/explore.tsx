@@ -4,7 +4,7 @@ import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 
 const submissionsData = [
-  {
+  { 
     id: 1,
     title: 'Acme Corp - General Liability',
     broker: 'Broker: Marsh',
