@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, Modal, TouchableOpacity, Button } from 'react-native';
+import { StyleSheet, View, Text, Modal, TouchableOpacity, Button, Dimensions } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
+import { PieChart } from 'react-native-chart-kit';
 
 const submissionsData = [
   { 
@@ -150,6 +151,31 @@ const getScoreStyle = (scoreType: string) => {
   }
 };
 
+const getModalScoreStyle = (scoreValue: number) => {
+  if (scoreValue < 50) {
+    return styles.notSafeModalText;
+  } else if (scoreValue >= 50 && scoreValue < 75) {
+    return styles.moderateModalText;
+  } else {
+    return styles.safeModalText;
+  }
+};
+
+const getModalRiskScoreStyle = (riskScore: string) => {
+  switch (riskScore) {
+    case 'High':
+      return styles.notSafeModalText;
+    case 'Medium':
+      return styles.moderateModalText;
+    case 'Low':
+      return styles.safeModalText;
+    default:
+      return {};
+  }
+};
+
+const screenWidth = Dimensions.get('window').width;
+
 export default function FedoratoDashboard() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
@@ -164,26 +190,90 @@ export default function FedoratoDashboard() {
     setSelectedSubmission(null);
   };
 
+  // Calculate total premium by line of business for the pie chart
+  const premiumByLineOfBusiness = submissions.reduce((acc, submission) => {
+    const line = submission.line_of_business;
+    const premium = submission.underwritingMetrics.total_premium;
+    acc[line] = (acc[line] || 0) + premium;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const pieChartData = Object.entries(premiumByLineOfBusiness).map(([name, population], index) => ({
+    name,
+    population,
+    color: `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 0.8)`,
+    legendFontColor: '#7F7F7F',
+    legendFontSize: 15,
+  }));
+
+  const chartConfig = {
+    backgroundColor: '#ffffff',
+    backgroundGradientFrom: '#ffffff',
+    backgroundGradientTo: '#ffffff',
+    decimalPlaces: 0, // optional, defaults to 2dp
+    color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+    style: {
+      borderRadius: 16,
+    },
+    propsForDots: {
+      r: '6',
+      strokeWidth: '2',
+      stroke: '#ffa726',
+    },
+  };
+
   return (
     <ThemedView style={styles.container}>
-      <ThemedText type="title" style={styles.title}>Fedorato Dashboard</ThemedText>
-      <ThemedText type="subtitle" style={styles.subtitle}>Submissions Inbox</ThemedText>
-      <View style={styles.listContainer}>
-        {submissions.map((submission) => (
-          <TouchableOpacity key={submission.id} onPress={() => openModal(submission)}>
-            <View style={styles.submissionItem}>
-              <View style={styles.submissionDetails}>
-                <ThemedText type="defaultSemiBold">{submission.title}</ThemedText>
-                <ThemedText type="default">{submission.broker}</ThemedText>
-                <ThemedText type="default">Effective Date: {submission.effectiveDate}</ThemedText>
-                <ThemedText type="default">Expiration Date: {submission.expirationDate}</ThemedText>
+      <View style={styles.leftWidget}>
+        <ThemedText type="subtitle">Financial Overview</ThemedText>
+        <ThemedText>Money Earned (Last Month): $1.2M</ThemedText>
+        <ThemedText>Number of Requests: 150</ThemedText>
+        
+        <ThemedText type="subtitle" style={{ marginTop: 20 }}>Premium by Line of Business</ThemedText>
+        {pieChartData.length > 0 ? (
+          <PieChart
+            data={pieChartData}
+            width={screenWidth * 0.25} // Adjust width as needed
+            height={200}
+            chartConfig={chartConfig}
+            accessor="population"
+            backgroundColor="transparent"
+            paddingLeft="15"
+            absolute // Show absolute values in tooltip
+          />
+        ) : (
+          <ThemedText>No premium data available for chart.</ThemedText>
+        )}
+      </View>
+
+      <View style={styles.inboxColumn}>
+        <ThemedText type="title" style={styles.title}>Fedorato Dashboard</ThemedText>
+        <ThemedText type="subtitle" style={styles.subtitle}>Submissions Inbox</ThemedText>
+        <View style={styles.listContainer}>
+          {submissions.map((submission) => (
+            <TouchableOpacity key={submission.id} onPress={() => openModal(submission)}>
+              <View style={styles.submissionItem}>
+                <View style={styles.submissionDetails}>
+                  <ThemedText type="defaultSemiBold">{submission.title}</ThemedText>
+                  <ThemedText type="default">{submission.broker}</ThemedText>
+                  <ThemedText type="default">Effective Date: {submission.effectiveDate}</ThemedText>
+                  <ThemedText type="default">Expiration Date: {submission.expirationDate}</ThemedText>
+                </View>
+                <View style={[styles.scoreContainer, getScoreStyle(submission.scoreType)]}>
+                  <Text style={styles.scoreText}>{submission.score} ({submission.scoreValue})</Text>
+                </View>
               </View>
-              <View style={[styles.scoreContainer, getScoreStyle(submission.scoreType)]}>
-                <Text style={styles.scoreText}>{submission.score} ({submission.scoreValue})</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.rightWidget}>
+        <ThemedText type="subtitle">Alerts & Warnings</ThemedText>
+        <ThemedText style={styles.notSafeModalText}>Warning: High chance of loss for Acme Corp</ThemedText>
+        <ThemedText style={styles.moderateModalText}>Warning: This request doesn&apos;t match appetite</ThemedText>
+        {/* Placeholder for other warnings */}
       </View>
 
       {selectedSubmission && (
@@ -201,8 +291,8 @@ export default function FedoratoDashboard() {
               <ThemedText>Address: {selectedSubmission.customerInfo.address}</ThemedText>
 
               <ThemedText type="subtitle">Scores</ThemedText>
-              <ThemedText>Score: {selectedSubmission.score} ({selectedSubmission.scoreValue}/100)</ThemedText>
-              <ThemedText>Risk Score: {selectedSubmission.riskScore}</ThemedText>
+              <ThemedText style={getModalScoreStyle(selectedSubmission.scoreValue)}>Score: {selectedSubmission.score} ({selectedSubmission.scoreValue}/100)</ThemedText>
+              <ThemedText style={getModalRiskScoreStyle(selectedSubmission.riskScore)}>Risk Score: {selectedSubmission.riskScore}</ThemedText>
 
               <ThemedText type="subtitle">Missing Data</ThemedText>
               {selectedSubmission.missingData.length > 0 ? (
@@ -233,7 +323,25 @@ export default function FedoratoDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    flexDirection: 'row',
     padding: 16,
+  },
+  leftWidget: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#f0f0f0', // Light gray background for widgets
+    borderRadius: 8,
+    marginRight: 16,
+  },
+  rightWidget: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#f0f0f0', // Light gray background for widgets
+    borderRadius: 8,
+    marginLeft: 16,
+  },
+  inboxColumn: {
+    flex: 2, // Inbox takes more space
   },
   title: {
     fontSize: 28,
@@ -297,5 +405,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     elevation: 5,
   },
+  notSafeModalText: {
+    color: '#dc3545',
+    fontWeight: 'bold',
+  },
+  moderateModalText: {
+    color: '#ffc107',
+    fontWeight: 'bold',
+  },
+  safeModalText: {
+    color: '#28a745',
+    fontWeight: 'bold',
+  },
 });
-

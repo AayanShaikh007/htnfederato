@@ -58,7 +58,7 @@ export default function GuidelinesDashboard() {
       }
     };
     fetchData();
-  }, []);
+  }, [primaryRiskState]);
 
   const saveToFirestore = async () => {
     await setDoc(doc(db, "guidelines", "config"), {
