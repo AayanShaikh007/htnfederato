@@ -1,98 +1,118 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useState } from "react";
+import Slider from "rc-slider";
+import "rc-slider/assets/index.css";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
 
-export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
+interface Values {
+  min: number;
+  targetMin: number;
+  targetMax: number;
+  max: number;
 }
 
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
+export default function RangeWithToggles() {
+  const [useMin, setUseMin] = useState<boolean>(true);
+  const [useTargetMin, setUseTargetMin] = useState<boolean>(true);
+  const [useTargetMax, setUseTargetMax] = useState<boolean>(true);
+  const [useMax, setUseMax] = useState<boolean>(true);
+
+  const [values, setValues] = useState<Values>({
+    min: 50_000,
+    targetMin: 75_000,
+    targetMax: 100_000,
+    max: 175_000,
+  });
+
+  const activeTracks: (keyof Values)[] = [];
+  if (useMin) activeTracks.push('min');
+  if (useTargetMin) activeTracks.push('targetMin');
+  if (useTargetMax) activeTracks.push('targetMax');
+  if (useMax) activeTracks.push('max');
+
+  const sliderValues = activeTracks.map(track => values[track]);
+
+  const handleSliderChange = (newValues: number | number[]) => {
+    const newSliderValues: Partial<Values> = {};
+    const valuesArray = Array.isArray(newValues) ? newValues : [newValues];
+    valuesArray.forEach((value, index) => {
+      const trackName = activeTracks[index];
+      if (trackName) {
+        newSliderValues[trackName] = value;
+      }
+    });
+    setValues(prev => ({ ...prev, ...newSliderValues }));
+  };
+
+  return (
+    <div
+      style={{
+        maxWidth: 500,
+        margin: "2rem auto",
+        padding: 20,
+        border: "1px solid #ccc",
+        borderRadius: 8,
+      }}
+    >
+      <h3>Configurable Guideline Slider</h3>
+
+      <label style={{ marginRight: 10 }}>
+        <input
+          type="checkbox"
+          checked={useMin}
+          onChange={(e) => setUseMin(e.target.checked)}
+        />{" "}
+        Enable Min
+      </label>
+      <label style={{ marginRight: 10 }}>
+        <input
+          type="checkbox"
+          checked={useTargetMin}
+          onChange={(e) => setUseTargetMin(e.target.checked)}
+        />{" "}
+        Enable Target Min
+      </label>
+      <label style={{ marginRight: 10 }}>
+        <input
+          type="checkbox"
+          checked={useTargetMax}
+          onChange={(e) => setUseTargetMax(e.target.checked)}
+        />{" "}
+        Enable Target Max
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={useMax}
+          onChange={(e) => setUseMax(e.target.checked)}
+        />{" "}
+        Enable Max
+      </label>
+
+      <div style={{ margin: "2rem 0" }}>
+        {sliderValues.length > 1 && (
+          <Slider
+            range
+            min={0}
+            max={200_000}
+            step={1000}
+            value={sliderValues}
+            onChange={handleSliderChange}
+            allowCross={false}
+          />
+        )}
+        {sliderValues.length === 1 && (
+          <Slider
+            min={0}
+            max={200_000}
+            step={1000}
+            value={sliderValues[0]}
+            onChange={handleSliderChange}
+          />
+        )}
+      </div>
+
+      <pre>{JSON.stringify(values, null, 2)}</pre>
+    </div>
+  );
+}
